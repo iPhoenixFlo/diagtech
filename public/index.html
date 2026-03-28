@@ -1,0 +1,1788 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DiagTech — Akinator Réparateur</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #080a0f;
+    --surface: #0f1218;
+    --surface2: #161b24;
+    --surface3: #1c2330;
+    --border: rgba(255,255,255,0.06);
+    --border2: rgba(255,255,255,0.12);
+    --green: #00ff87;
+    --red: #ff4757;
+    --yellow: #ffd32a;
+    --blue: #00b4d8;
+    --text: #dde3ee;
+    --text-muted: #556070;
+    --text-dim: #8896aa;
+  }
+
+  body {
+    background: var(--bg);
+    font-family: 'Space Grotesk', sans-serif;
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: 
+      radial-gradient(ellipse 60% 40% at 20% 20%, rgba(0,255,135,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 40% at 80% 80%, rgba(0,180,216,0.04) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 600px;
+    position: relative;
+  }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+
+  .logo h1 {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  .logo span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    display: block;
+    margin-top: 1px;
+  }
+
+  .reset-btn {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .reset-btn:hover { border-color: var(--border2); color: var(--text); background: var(--surface2); }
+
+  /* PROGRESS */
+  .progress-bar {
+    height: 2px;
+    background: var(--surface3);
+    border-radius: 2px;
+    margin-bottom: 32px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--green), var(--blue));
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  /* BREADCRUMB */
+  .breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 24px;
+    min-height: 24px;
+  }
+
+  .crumb {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .crumb .answer {
+    color: var(--green);
+  }
+
+  /* QUESTION CARD */
+  .question-card {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 32px;
+    margin-bottom: 20px;
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .q-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .q-number::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .q-text {
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 28px;
+  }
+
+  .q-hint {
+    font-size: 13px;
+    color: var(--text-muted);
+    background: var(--surface2);
+    border-left: 2px solid var(--border2);
+    padding: 10px 14px;
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 28px;
+    line-height: 1.5;
+  }
+
+  /* ANSWER BUTTONS */
+  .answers {
+    display: grid;
+    gap: 10px;
+  }
+
+  .answers.two-col {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .ans-btn {
+    padding: 16px 20px;
+    border-radius: 12px;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .ans-btn:hover {
+    transform: translateY(-1px);
+    background: var(--surface3);
+  }
+
+  .ans-btn.yes {
+    border-color: rgba(0,255,135,0.2);
+  }
+  .ans-btn.yes:hover {
+    border-color: rgba(0,255,135,0.5);
+    background: rgba(0,255,135,0.06);
+    color: var(--green);
+  }
+
+  .ans-btn.no {
+    border-color: rgba(255,71,87,0.2);
+  }
+  .ans-btn.no:hover {
+    border-color: rgba(255,71,87,0.5);
+    background: rgba(255,71,87,0.06);
+    color: var(--red);
+  }
+
+  .ans-btn.maybe {
+    border-color: rgba(255,211,42,0.2);
+  }
+  .ans-btn.maybe:hover {
+    border-color: rgba(255,211,42,0.5);
+    background: rgba(255,211,42,0.06);
+    color: var(--yellow);
+  }
+
+  .ans-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  /* RESULT CARD */
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 32px;
+    animation: slideIn 0.3s ease;
+  }
+
+  .result-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .result-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+
+  .result-icon.urgent { background: rgba(255,71,87,0.12); border: 1px solid rgba(255,71,87,0.3); }
+  .result-icon.normal { background: rgba(0,255,135,0.08); border: 1px solid rgba(0,255,135,0.2); }
+  .result-icon.warning { background: rgba(255,211,42,0.08); border: 1px solid rgba(255,211,42,0.2); }
+
+  .result-title {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+
+  .result-subtitle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .result-piece {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+  }
+
+  .result-piece-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+
+  .result-piece-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--green);
+  }
+
+  .result-notes {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .result-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13.5px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  .note-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    margin-top: 7px;
+    flex-shrink: 0;
+  }
+
+  .urgency-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    margin-bottom: 20px;
+  }
+
+  .urgency-tag.urgent { background: rgba(255,71,87,0.12); color: var(--red); border: 1px solid rgba(255,71,87,0.3); }
+  .urgency-tag.normal { background: rgba(0,255,135,0.08); color: var(--green); border: 1px solid rgba(0,255,135,0.2); }
+  .urgency-tag.warning { background: rgba(255,211,42,0.08); color: var(--yellow); border: 1px solid rgba(255,211,42,0.2); }
+
+  .action-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .action-btn:hover { background: var(--surface3); border-color: rgba(255,255,255,0.15); }
+
+  /* CONFIDENCE */
+  .confidence {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .confidence-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  .confidence-bar {
+    flex: 1;
+    height: 4px;
+    background: var(--surface3);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .confidence-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+  }
+
+  .confidence-pct {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  .action-btn { margin-bottom: 0; }
+
+  .action-btn.deepen {
+    border-color: rgba(0,180,216,0.3);
+    color: var(--blue);
+    margin-bottom: 8px;
+  }
+  .action-btn.deepen:hover {
+    background: rgba(0,180,216,0.08);
+    border-color: rgba(0,180,216,0.5);
+  }
+
+  .result-divider {
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    margin: 4px 0 12px;
+    letter-spacing: 0.08em;
+  }
+
+  /* API KEY MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(8,10,15,0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+    backdrop-filter: blur(6px);
+  }
+
+  .modal {
+    width: 100%;
+    max-width: 440px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 32px;
+    animation: fadeUp 0.3s ease;
+  }
+
+  .modal-icon {
+    width: 48px; height: 48px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(0,229,255,0.15), rgba(124,77,255,0.15));
+    border: 1px solid rgba(0,229,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    margin-bottom: 20px;
+  }
+
+  .modal h2 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+
+  .modal p {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 24px;
+  }
+
+  .modal p a {
+    color: var(--blue);
+    text-decoration: none;
+  }
+
+  .modal-input-wrap {
+    position: relative;
+    margin-bottom: 12px;
+  }
+
+  .modal-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    padding: 13px 46px 13px 16px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.2s;
+    letter-spacing: 0.04em;
+  }
+
+  .modal-input:focus { border-color: rgba(0,229,255,0.4); }
+  .modal-input::placeholder { color: var(--text-muted); letter-spacing: 0; }
+
+  .modal-toggle {
+    position: absolute;
+    right: 14px; top: 50%;
+    transform: translateY(-50%);
+    background: none; border: none;
+    color: var(--text-muted); cursor: pointer;
+    font-size: 15px; padding: 0;
+    transition: color 0.15s;
+  }
+  .modal-toggle:hover { color: var(--text); }
+
+  .modal-error {
+    font-size: 12px;
+    color: var(--red);
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 12px;
+    min-height: 16px;
+  }
+
+  .modal-submit {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--blue), #7c4dff);
+    border: none;
+    color: white;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    margin-bottom: 12px;
+  }
+  .modal-submit:hover { opacity: 0.85; }
+
+  .modal-note {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  .api-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--green);
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+  }
+  .api-badge:hover { opacity: 1; }
+  .api-badge-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse-dot 2s infinite;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">🔬</div>
+      <div>
+        <h1>DiagTech</h1>
+        <span id="kb-count">Akinator Réparateur v1.0</span>
+      </div>
+    </div>
+    <button class="reset-btn" onclick="reset()">↩ Recommencer</button>
+  </div>
+
+  <div class="progress-bar">
+    <div class="progress-fill" id="progress" style="width: 0%"></div>
+  </div>
+
+  <div class="breadcrumb" id="breadcrumb"></div>
+
+  <div id="main"></div>
+</div>
+
+<script>
+// ─── ARBRE DE DÉCISION ───────────────────────────────────────────────────────
+
+const tree = {
+  id: "start",
+  q: "Le téléphone s'allume-t-il ?",
+  hint: "Appuyer sur le bouton power — même brièvement. Toute réaction compte.",
+  answers: [
+    {
+      label: "Oui", icon: "✅", type: "yes",
+      next: {
+        id: "allume_ecran",
+        q: "L'écran s'affiche-t-il correctement ?",
+        hint: "L'image est visible, lisible, sans zones noires ou lignes.",
+        answers: [
+          {
+            label: "Oui", icon: "✅", type: "yes",
+            next: {
+              id: "symptome",
+              q: "Quel est le symptôme principal signalé ?",
+              hint: "Choisir le plus proche de ce que décrit le client.",
+              answers: [
+                { label: "🔁 Redémarrages aléatoires", icon: "", type: "maybe", next: "reboot" },
+                { label: "⚡ Ne charge plus", icon: "", type: "maybe", next: "charge" },
+                { label: "🔈 Problème de son", icon: "", type: "maybe", next: "son" },
+                { label: "🔊 Écho / micro", icon: "", type: "maybe", next: "echo" },
+                { label: "📷 Caméra floue / HS", icon: "", type: "maybe", next: "camera" },
+                { label: "🔘 Bouton power intermittent", icon: "", type: "maybe", next: "bouton" },
+                { label: "👁️ Problème Face ID", icon: "", type: "maybe", next: "faceid" },
+              ]
+            }
+          },
+          {
+            label: "Non — écran noir", icon: "❌", type: "no",
+            next: {
+              id: "ecran_noir_tactile",
+              q: "Le tactile répond-il encore ?",
+              hint: "Tester en aveugle : appel entrant, vibration sur message...",
+              answers: [
+                {
+                  label: "Oui", icon: "✅", type: "yes",
+                  result: {
+                    title: "Dalle OLED / LCD défaillante",
+                    piece: "Remplacement écran complet",
+                    urgency: "normal",
+                    icon: "📱",
+                    confidence: 88,
+                    notes: [
+                      "Le tactile fonctionne = la carte mère est OK",
+                      "Souvent lié à une fissure non réparée qui a progressé",
+                      "Données non menacées"
+                    ]
+                  }
+                },
+                {
+                  label: "Non", icon: "❌", type: "no",
+                  next: {
+                    id: "ecran_noir_chute",
+                    q: "Il y a eu une chute récente ?",
+                    hint: null,
+                    answers: [
+                      {
+                        label: "Oui", icon: "✅", type: "yes",
+                        result: {
+                          title: "Nappe écran arrachée ou connecteur desoudé",
+                          piece: "Vérifier nappe + connecteur écran",
+                          urgency: "normal",
+                          icon: "🔌",
+                          confidence: 75,
+                          notes: [
+                            "Chute + écran noir + tactile mort = nappe probablement touchée",
+                            "Ouvrir et vérifier les connecteurs avant de commander une dalle",
+                            "Peut aussi être la dalle elle-même selon la violence du choc"
+                          ]
+                        }
+                      },
+                      {
+                        label: "Non", icon: "❌", type: "no",
+                        result: {
+                          title: "Problème carte mère possible",
+                          piece: "Diagnostic approfondi nécessaire",
+                          urgency: "warning",
+                          icon: "⚠️",
+                          confidence: 60,
+                          notes: [
+                            "Écran noir + tactile mort + sans chute = suspect",
+                            "Vérifier d'abord les connecteurs internes",
+                            "Peut être un composant vidéo sur la carte mère"
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            label: "Affichage abîmé (lignes, taches, pixels)", icon: "🟫", type: "maybe",
+            result: {
+              title: "Dalle OLED endommagée",
+              piece: "Remplacement écran complet obligatoire",
+              urgency: "normal",
+              icon: "📱",
+              confidence: 95,
+              notes: [
+                "Lignes / taches / pixels morts = dalle HS, pas réparable",
+                "Souvent suite à une fissure ou choc",
+                "Données en sécurité si le téléphone fonctionne"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      label: "Non — aucun signe de vie", icon: "❌", type: "no",
+      next: {
+        id: "no_power_hardreboot",
+        q: "Le hard reboot a-t-il été tenté ?",
+        hint: "iPhone : Vol+ / Vol- / Power maintenu. Android : Power maintenu 10-15s.",
+        answers: [
+          {
+            label: "Non, pas encore", icon: "⚠️", type: "maybe",
+            result: {
+              title: "Tenter le hard reboot en premier !",
+              piece: "Aucune pièce — manipulation logicielle",
+              urgency: "normal",
+              icon: "🔄",
+              confidence: 80,
+              notes: [
+                "iPhone : Vol+ x1 → Vol- x1 → maintenir Power",
+                "Samsung : maintenir Power + Vol- pendant 10s",
+                "4 fois sur 5 ça repart sans aucune réparation",
+                "Si ça ne marche pas → revenir et continuer le diagnostic"
+              ]
+            }
+          },
+          {
+            label: "Oui, sans résultat", icon: "✅", type: "yes",
+            next: {
+              id: "no_power_chargé",
+              q: "Le téléphone a été chargé au moins 30 minutes ?",
+              hint: "Parfois la batterie est trop déchargée pour déclencher le démarrage.",
+              answers: [
+                {
+                  label: "Non", icon: "❌", type: "no",
+                  result: {
+                    title: "Batterie trop déchargée — charger d'abord",
+                    piece: "Attendre 30 min avant tout diagnostic",
+                    urgency: "normal",
+                    icon: "🔋",
+                    confidence: 70,
+                    notes: [
+                      "Une batterie à 0% depuis longtemps refuse parfois de démarrer",
+                      "Laisser branché 30 min puis retenter le hard reboot",
+                      "Si toujours rien après → batterie HS probable"
+                    ]
+                  }
+                },
+                {
+                  label: "Oui, branché 30 min+", icon: "✅", type: "yes",
+                  next: {
+                    id: "no_power_chauffe",
+                    q: "Le téléphone chauffe-t-il quand il est branché ?",
+                    hint: "Poser la main au dos — même légère chaleur anormale compte.",
+                    answers: [
+                      {
+                        label: "Oui, ça chauffe", icon: "🔥", type: "yes",
+                        result: {
+                          title: "Court-circuit — probablement carte mère",
+                          piece: "Diagnostic carte mère urgent",
+                          urgency: "urgent",
+                          icon: "⚡",
+                          confidence: 78,
+                          notes: [
+                            "Chauffe sans s'allumer = consommation anormale",
+                            "Ne pas laisser branché longtemps",
+                            "Souvent lié à un dégât des eaux non détecté"
+                          ]
+                        }
+                      },
+                      {
+                        label: "Non, aucune chaleur", icon: "❄️", type: "no",
+                        result: {
+                          title: "Batterie HS",
+                          piece: "Remplacement batterie",
+                          urgency: "normal",
+                          icon: "🔋",
+                          confidence: 82,
+                          notes: [
+                            "Aucun signe de vie + hard reboot échoué + pas de chaleur = batterie morte",
+                            "Commencer par la batterie avant d'envisager la carte mère",
+                            "Vérifier aussi le connecteur de batterie sur la carte"
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      label: "Signe de vie partiel (vibration, logo...)", icon: "〰️", type: "maybe",
+      next: {
+        id: "partiel_logo",
+        q: "Le logo s'affiche puis le téléphone s'éteint ?",
+        hint: "Boot loop = il redémarre en boucle sur le logo.",
+        answers: [
+          {
+            label: "Oui — boot loop", icon: "🔁", type: "yes",
+            result: {
+              title: "Boot loop — batterie ou logiciel",
+              piece: "Tester remplacement batterie + restauration iOS/Android",
+              urgency: "warning",
+              icon: "🔄",
+              confidence: 72,
+              notes: [
+                "Boot loop après mise à jour → souvent logiciel, tenter restauration",
+                "Boot loop spontané → batterie HS en premier suspect",
+                "Si persiste après batterie neuve → carte mère à envisager"
+              ]
+            }
+          },
+          {
+            label: "Non — juste une vibration", icon: "📳", type: "no",
+            result: {
+              title: "Écran défaillant (dalle ou nappe)",
+              piece: "Vérifier connecteur écran + remplacement dalle",
+              urgency: "normal",
+              icon: "📱",
+              confidence: 80,
+              notes: [
+                "Vibration = le téléphone fonctionne, l'écran ne reçoit pas le signal",
+                "Vérifier d'abord les connecteurs avant de commander une dalle",
+                "Peut être une nappe décollée suite à une chute"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+};
+
+// BRANCHES SUPPLÉMENTAIRES
+const branches = {
+  reboot: {
+    id: "reboot",
+    q: "Y a-t-il eu contact avec l'eau récemment ?",
+    hint: "Même légère humidité, éclaboussure, pluie...",
+    answers: [
+      {
+        label: "Oui", icon: "💦", type: "yes",
+        result: {
+          title: "Connecteur de charge oxydé",
+          piece: "Nettoyage + remplacement connecteur de charge",
+          urgency: "urgent",
+          icon: "⚡",
+          confidence: 85,
+          notes: [
+            "Dégât des eaux + redémarrages aléatoires = connecteur de charge en premier suspect",
+            "L'oxydation génère des signaux parasites → le téléphone interprète ça comme une coupure d'alimentation",
+            "Pas la carte mère — rassurer le client",
+            "URGENT : l'oxydation progresse chaque heure"
+          ]
+        }
+      },
+      {
+        label: "Non", icon: "❌", type: "no",
+        result: {
+          title: "Batterie défaillante",
+          piece: "Remplacement batterie + test 1 semaine",
+          urgency: "normal",
+          icon: "🔋",
+          confidence: 80,
+          notes: [
+            "Redémarrages sans eau = batterie qui perd tension momentanément",
+            "Remplacer la batterie et observer 1 semaine",
+            "Si ça persiste après batterie neuve → connecteur batterie ou carte mère"
+          ]
+        }
+      }
+    ]
+  },
+
+  charge: {
+    id: "charge",
+    q: "Le câble rentre-t-il normalement dans le connecteur ?",
+    hint: "Il ressort tout seul ? Il faut forcer ? Position précise pour que ça charge ?",
+    answers: [
+      {
+        label: "Il ressort / rentre mal", icon: "🪴", type: "maybe",
+        result: {
+          title: "Connecteur encrassé (charpie / poussière)",
+          piece: "Nettoyage professionnel en atelier",
+          urgency: "normal",
+          icon: "🧹",
+          confidence: 90,
+          notes: [
+            "Connecteur qui rentre mal = obstruction physique dans 90% des cas",
+            "Ne pas suggérer au client de nettoyer lui-même — risque d'aggraver",
+            "Nettoyage en atelier en quelques minutes",
+            "Remplacement connecteur seulement si nettoyage insuffisant"
+          ]
+        }
+      },
+      {
+        label: "Rentre bien, mais ne charge pas", icon: "❌", type: "no",
+        next: {
+          id: "charge_sans_fil",
+          q: "La charge sans fil fonctionne-t-elle ?",
+          hint: null,
+          answers: [
+            {
+              label: "Oui — sans fil OK", icon: "✅", type: "yes",
+              result: {
+                title: "Connecteur de charge défaillant",
+                piece: "Remplacement connecteur de charge",
+                urgency: "normal",
+                icon: "🔌",
+                confidence: 92,
+                notes: [
+                  "Sans fil OK + filaire HS = connecteur de charge clairement en cause",
+                  "Tester d'abord avec plusieurs câbles pour éliminer le câble défectueux",
+                  "Remplacement connecteur si tous les câbles échouent"
+                ]
+              }
+            },
+            {
+              label: "Non — rien ne charge", icon: "❌", type: "no",
+              result: {
+                title: "Batterie HS ou puce de charge",
+                piece: "Remplacement batterie en premier",
+                urgency: "warning",
+                icon: "🔋",
+                confidence: 70,
+                notes: [
+                  "Sans fil + filaire HS = batterie ou puce de charge",
+                  "Commencer par la batterie (moins coûteux)",
+                  "Si batterie neuve ne règle pas → puce de charge sur carte mère"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+
+  son: {
+    id: "son",
+    q: "Le son grésille ou est-il absent ?",
+    hint: null,
+    answers: [
+      {
+        label: "Grésille à fort volume", icon: "📢", type: "maybe",
+        result: {
+          title: "Grilles encrassées",
+          piece: "Nettoyage professionnel des grilles",
+          urgency: "normal",
+          icon: "🧹",
+          confidence: 88,
+          notes: [
+            "Grésille à fort volume + progressif = poussière/peluches dans les grilles",
+            "Nettoyer haut-parleur + écouteur interne + micro",
+            "Remplacement haut-parleur seulement si nettoyage insuffisant",
+            "Ne pas suggérer au client de nettoyer seul"
+          ]
+        }
+      },
+      {
+        label: "Son absent", icon: "🔇", type: "no",
+        next: {
+          id: "son_ecouteurs",
+          q: "Les écouteurs Bluetooth ou filaires fonctionnent-ils ?",
+          hint: null,
+          answers: [
+            {
+              label: "Oui — écouteurs OK", icon: "✅", type: "yes",
+              result: {
+                title: "Haut-parleur défaillant",
+                piece: "Remplacement haut-parleur",
+                urgency: "normal",
+                icon: "🔈",
+                confidence: 93,
+                notes: [
+                  "Écouteurs OK = puce audio fonctionnelle",
+                  "Haut-parleur physique à remplacer",
+                  "Vérifier aussi si contact eau — oxydation possible"
+                ]
+              }
+            },
+            {
+              label: "Non — rien ne fonctionne", icon: "❌", type: "no",
+              result: {
+                title: "Puce audio — diagnostic complexe",
+                piece: "Diagnostic carte mère nécessaire",
+                urgency: "warning",
+                icon: "⚠️",
+                confidence: 65,
+                notes: [
+                  "Aucun son nulle part = puce audio sur carte mère suspectée",
+                  "Vérifier d'abord si contact eau non signalé",
+                  "Réparation micro-soudure souvent nécessaire"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+
+  echo: {
+    id: "echo",
+    q: "L'écho se produit-il aussi en mode haut-parleur ?",
+    hint: "Tester un appel en mettant le haut-parleur activé.",
+    answers: [
+      {
+        label: "Non — seulement en mode normal", icon: "✅", type: "yes",
+        result: {
+          title: "Écouteur interne défaillant",
+          piece: "Remplacement écouteur interne",
+          urgency: "normal",
+          icon: "🎧",
+          confidence: 90,
+          notes: [
+            "Écho en mode normal uniquement = fuite sonore de l'écouteur vers le micro",
+            "L'écouteur se décolle légèrement et laisse passer le son",
+            "Réparation classique, données non menacées",
+            "Pas urgent mais gênant pour les interlocuteurs"
+          ]
+        }
+      },
+      {
+        label: "Oui — en haut-parleur aussi", icon: "❌", type: "no",
+        result: {
+          title: "Problème réseau ou logiciel",
+          piece: "Pas forcément hardware — tester réseau",
+          urgency: "normal",
+          icon: "📶",
+          confidence: 70,
+          notes: [
+            "Écho partout = problème réseau ou opérateur possible",
+            "Tester avec une autre carte SIM",
+            "Peut être un bug logiciel — tenter réinitialisation réseau",
+            "Si persiste → double panne micro + écouteur à examiner"
+          ]
+        }
+      }
+    ]
+  },
+
+  camera: {
+    id: "camera",
+    q: "Quelle caméra est concernée ?",
+    hint: null,
+    answers: [
+      {
+        label: "Caméra arrière", icon: "📷", type: "maybe",
+        next: {
+          id: "camera_arriere_type",
+          q: "Quel est le problème exact ?",
+          hint: null,
+          answers: [
+            {
+              label: "Image floue en permanence", icon: "🌫️", type: "maybe",
+              result: {
+                title: "Module caméra arrière — autofocus HS",
+                piece: "Remplacement module caméra arrière",
+                urgency: "normal",
+                icon: "📷",
+                confidence: 85,
+                notes: [
+                  "Flou permanent = autofocus défaillant dans le module",
+                  "Vérifier d'abord si appareil récent → garantie 1 an constructeur",
+                  "2ème année : garantie légale difficile à faire valoir via revendeur",
+                  "Caméra avant OK = confirme problème localisé au module arrière"
+                ]
+              }
+            },
+            {
+              label: "Caméra noire / ne s'ouvre pas", icon: "⬛", type: "maybe",
+              result: {
+                title: "Nappe caméra ou module défaillant",
+                piece: "Vérifier nappe + remplacement module",
+                urgency: "normal",
+                icon: "🔌",
+                confidence: 78,
+                notes: [
+                  "Écran noir dans l'appli caméra = signal non reçu",
+                  "Vérifier les connecteurs avant de commander le module",
+                  "Peut être une nappe décollée après chute"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        label: "Caméra avant", icon: "🤳", type: "maybe",
+        result: {
+          title: "Module caméra avant défaillant",
+          piece: "Remplacement module caméra avant",
+          urgency: "normal",
+          icon: "🤳",
+          confidence: 82,
+          notes: [
+            "Attention sur iPhone — le module Face ID est lié à la caméra avant",
+            "Un remplacement non Apple peut déclencher l'erreur 53",
+            "Erreur 53 = oxydation ou composant Face ID HS détecté par le Secure Enclave",
+            "Utiliser une pièce certifiée ou passer par Apple pour les iPhones récents"
+          ]
+        }
+      }
+    ]
+  },
+
+  bouton: {
+    id: "bouton",
+    q: "Le bouton répond-il de façon intermittente ou plus du tout ?",
+    hint: null,
+    answers: [
+      {
+        label: "Intermittent — parfois ça marche", icon: "〰️", type: "maybe",
+        result: {
+          title: "Nappe power défaillante",
+          piece: "Remplacement nappe power",
+          urgency: "normal",
+          icon: "🔘",
+          confidence: 88,
+          notes: [
+            "Bouton intermittent + progressif = nappe power qui perd ses contacts",
+            "Classique d'une usure progressive",
+            "Difficulté de réparation variable selon le modèle (nappe parfois sous la carte mère)",
+            "À traiter avant que ça lâche complètement"
+          ]
+        }
+      },
+      {
+        label: "Plus du tout", icon: "❌", type: "no",
+        result: {
+          title: "Nappe power hors service",
+          piece: "Remplacement nappe power",
+          urgency: "normal",
+          icon: "🔘",
+          confidence: 85,
+          notes: [
+            "Nappe power morte — remplacement nécessaire",
+            "Vérifier aussi le bouton physique lui-même",
+            "Sur certains modèles la nappe inclut d'autres fonctions (empreinte, volume)"
+          ]
+        }
+      }
+    ]
+  },
+
+  faceid: {
+    id: "faceid",
+    q: "Le Face ID ne fonctionne plus du tout ou de façon intermittente ?",
+    hint: null,
+    answers: [
+      {
+        label: "Intermittent — marche parfois", icon: "〰️", type: "maybe",
+        next: {
+          id: "faceid_cause",
+          q: "Y a-t-il eu l'un de ces événements récemment ?",
+          hint: "Choisir ce qui correspond le mieux.",
+          answers: [
+            {
+              label: "💦 Contact avec l'eau", icon: "", type: "maybe",
+              result: {
+                title: "Oxydation module TrueDepth",
+                piece: "Nettoyage ultrason + remplacement module si insuffisant",
+                urgency: "urgent",
+                icon: "👁️",
+                confidence: 85,
+                notes: [
+                  "L'humidité attaque les composants du module TrueDepth",
+                  "Tenter d'abord réinitialisation Face ID dans Réglages → Face ID et code",
+                  "Si persiste → nettoyage ultrason en atelier",
+                  "Remplacement module TrueDepth si nettoyage insuffisant",
+                  "Attention : remplacement non certifié Apple peut déclencher erreur 53"
+                ]
+              }
+            },
+            {
+              label: "💥 Chute", icon: "", type: "maybe",
+              result: {
+                title: "Nappe ou connecteur TrueDepth",
+                piece: "Vérifier nappe + connecteur module caméra avant",
+                urgency: "normal",
+                icon: "👁️",
+                confidence: 82,
+                notes: [
+                  "Chute + Face ID intermittent = nappe partiellement déconnectée",
+                  "Tenter d'abord réinitialisation Face ID dans les Réglages",
+                  "Si persiste → vérifier connecteurs internes avant de remplacer le module",
+                  "Peut aussi être l'écran fissuré à l'endroit de la caméra qui gêne le capteur"
+                ]
+              }
+            },
+            {
+              label: "📱 Écran fissuré côté caméra", icon: "", type: "maybe",
+              result: {
+                title: "Module TrueDepth obstrué par la fissure",
+                piece: "Remplacement écran + vérification module",
+                urgency: "normal",
+                icon: "👁️",
+                confidence: 88,
+                notes: [
+                  "Une fissure sur la zone caméra avant peut bloquer le dot projector",
+                  "Remplacement de l'écran souvent suffisant pour régler le Face ID",
+                  "Vérifier l'état du module TrueDepth à l'ouverture",
+                  "Tenter réinitialisation Face ID après remplacement écran"
+                ]
+              }
+            },
+            {
+              label: "🌫️ Aucun événement — progressif", icon: "", type: "maybe",
+              result: {
+                title: "Poussière sur le module TrueDepth",
+                piece: "Nettoyage professionnel zone caméra avant",
+                urgency: "normal",
+                icon: "🧹",
+                confidence: 80,
+                notes: [
+                  "Face ID intermittent sans cause apparente = poussière très souvent",
+                  "La poussière obstrue le dot projector ou la caméra infrarouge",
+                  "Nettoyage professionnel en atelier — ne pas suggérer au client de le faire seul",
+                  "Tenter aussi réinitialisation Face ID dans Réglages avant ouverture"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        label: "Plus du tout — complètement HS", icon: "❌", type: "no",
+        next: {
+          id: "faceid_hs_cause",
+          q: "Le téléphone a-t-il subi un remplacement d'écran récemment ?",
+          hint: "Par un technicien ou en autonomie.",
+          answers: [
+            {
+              label: "Oui — écran remplacé récemment", icon: "✅", type: "yes",
+              result: {
+                title: "Nappe TrueDepth mal reconnectée",
+                piece: "Rouvrir et vérifier branchement nappe TrueDepth",
+                urgency: "normal",
+                icon: "🔌",
+                confidence: 90,
+                notes: [
+                  "Après remplacement écran, le module TrueDepth doit être soigneusement rebranché",
+                  "Nappe peut avoir été pincée ou mal reconnectée lors de la réparation",
+                  "Rouvrir et vérifier le connecteur du module caméra avant",
+                  "Si connecteur OK → module TrueDepth possiblement endommagé à l'ouverture"
+                ]
+              }
+            },
+            {
+              label: "Non — aucune réparation", icon: "❌", type: "no",
+              result: {
+                title: "Module TrueDepth HS — erreur 53 possible",
+                piece: "Remplacement module TrueDepth certifié",
+                urgency: "warning",
+                icon: "⚠️",
+                confidence: 78,
+                notes: [
+                  "Face ID mort sans réparation récente = module TrueDepth HS",
+                  "Vérifier si dégât des eaux ancien non signalé — oxydation silencieuse",
+                  "Attention erreur 53 : utiliser uniquement des pièces certifiées Apple",
+                  "Un remplacement non certifié peut bloquer le téléphone lors d'une mise à jour iOS"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+};
+
+// ─── BRANCHES D'APPROFONDISSEMENT ────────────────────────────────────────────
+const deepenBranches = {
+
+  batterie_approfondi: {
+    id: "batterie_approfondi",
+    q: "Le remplacement de batterie n'a pas réglé le problème ?",
+    hint: "On explore d'autres causes possibles.",
+    answers: [
+      { label: "Redémarre encore", icon: "🔁", type: "no",
+        result: { title: "Connecteur batterie ou carte mère", piece: "Vérifier connecteur batterie sur carte + micro-soudure", urgency: "warning", icon: "🔌", confidence: 70,
+          notes: ["Batterie neuve mais redémarre encore = connecteur batterie à inspecter", "Peut être un composant de gestion d'alimentation sur la carte mère", "Diagnostic micro-soudure à envisager"] }
+      },
+      { label: "Ne charge toujours pas", icon: "⚡", type: "no",
+        result: { title: "Puce de charge sur carte mère", piece: "Diagnostic micro-soudure — puce de charge", urgency: "warning", icon: "⚠️", confidence: 72,
+          notes: ["Batterie neuve + connecteur OK + ne charge pas = puce de charge HS", "Réparation micro-soudure nécessaire", "Vérifier aussi si oxydation présente sur la carte"] }
+      },
+      { label: "Ne s'allume toujours pas", icon: "📵", type: "no",
+        result: { title: "Problème carte mère", piece: "Diagnostic carte mère approfondi", urgency: "warning", icon: "⚠️", confidence: 65,
+          notes: ["Batterie neuve + hard reboot + ne s'allume pas = carte mère à examiner", "Vérifier d'abord tous les connecteurs internes", "Micro-soudure ou composant défaillant sur la carte"] }
+      }
+    ]
+  },
+
+  ecran_approfondi: {
+    id: "ecran_approfondi",
+    q: "Le remplacement d'écran n'a pas tout réglé ?",
+    hint: null,
+    answers: [
+      { label: "Tactile ne répond pas bien", icon: "👆", type: "maybe",
+        result: { title: "Nappe tactile mal reconnectée", piece: "Vérifier connecteur nappe tactile", urgency: "normal", icon: "🔌", confidence: 85,
+          notes: ["Après remplacement, le tactile peut être partiellement déconnecté", "Rouvrir et vérifier le connecteur de la nappe tactile", "Si dall neuve et tactile HS → dalle défectueuse possible"] }
+      },
+      { label: "Face ID ne marche plus", icon: "👁️", type: "maybe",
+        result: { title: "Nappe TrueDepth pincée à l'ouverture", piece: "Vérifier branchement module TrueDepth", urgency: "normal", icon: "👁️", confidence: 88,
+          notes: ["Classique après remplacement écran iPhone", "La nappe TrueDepth est fragile et facile à pincer", "Rouvrir et repositionner soigneusement le connecteur"] }
+      },
+      { label: "Affichage encore abîmé", icon: "📱", type: "maybe",
+        result: { title: "Dalle de remplacement défectueuse", piece: "Tester avec une autre dalle", urgency: "normal", icon: "📦", confidence: 80,
+          notes: ["Rare mais possible — une dalle neuve peut être défectueuse", "Tester rapidement avec une 2ème dalle avant de chercher plus loin", "Si 2ème dalle OK → problème de connecteur sur la première"] }
+      }
+    ]
+  },
+
+  charge_approfondi: {
+    id: "charge_approfondi",
+    q: "Le nettoyage ou remplacement connecteur n'a pas suffi ?",
+    hint: null,
+    answers: [
+      { label: "Toujours pas de charge filaire", icon: "🔌", type: "no",
+        result: { title: "Puce de charge sur carte mère", piece: "Diagnostic micro-soudure — puce de charge", urgency: "warning", icon: "⚠️", confidence: 73,
+          notes: ["Connecteur neuf + toujours pas de charge = puce de charge à examiner", "Vérifier aussi si oxydation remonte vers la carte", "Réparation micro-soudure à envisager"] }
+      },
+      { label: "Charge lente uniquement", icon: "🐌", type: "maybe",
+        result: { title: "Batterie HS ou câble de mauvaise qualité", piece: "Tester avec câble/chargeur certifié + vérifier batterie", urgency: "normal", icon: "🔋", confidence: 78,
+          notes: ["Charge lente après connecteur neuf = batterie qui n'accepte plus la charge rapide", "Tester impérativement avec un câble Apple ou MFi certifié", "Remplacement batterie si charge lente persiste"] }
+      }
+    ]
+  },
+
+  son_approfondi: {
+    id: "son_approfondi",
+    q: "Le nettoyage des grilles n'a pas réglé le problème ?",
+    hint: null,
+    answers: [
+      { label: "Grésille encore", icon: "📢", type: "maybe",
+        result: { title: "Membrane haut-parleur abîmée", piece: "Remplacement haut-parleur", urgency: "normal", icon: "🔈", confidence: 88,
+          notes: ["Nettoyage inefficace + grésille encore = membrane HS", "La membrane peut être déchirée par une chute ou l'humidité", "Remplacement du module haut-parleur nécessaire"] }
+      },
+      { label: "Son absent après remplacement", icon: "🔇", type: "no",
+        result: { title: "Puce audio — diagnostic complexe", piece: "Diagnostic carte mère — puce audio", urgency: "warning", icon: "⚠️", confidence: 65,
+          notes: ["Haut-parleur neuf + son absent = puce audio sur carte mère suspectée", "Vérifier d'abord si contact eau non signalé", "Réparation micro-soudure souvent nécessaire"] }
+      }
+    ]
+  },
+
+  reboot_approfondi: {
+    id: "reboot_approfondi",
+    q: "Le remplacement du connecteur de charge n'a pas stoppé les redémarrages ?",
+    hint: null,
+    answers: [
+      { label: "Redémarre encore aléatoirement", icon: "🔁", type: "no",
+        result: { title: "Batterie ou carte mère", piece: "Remplacer batterie + inspecter carte mère", urgency: "warning", icon: "⚠️", confidence: 70,
+          notes: ["Connecteur neuf + redémarrages persistants = batterie à tester en priorité", "Si batterie neuve ne règle pas → composant alimentation sur carte mère", "Vérifier aussi toute trace d'oxydation sur la carte"] }
+      },
+      { label: "Redémarre uniquement en charge", icon: "⚡", type: "maybe",
+        result: { title: "Puce de charge défaillante", piece: "Diagnostic micro-soudure — puce de charge", urgency: "warning", icon: "⚡", confidence: 75,
+          notes: ["Redémarre uniquement branché = puce de charge qui envoie des signaux parasites", "Distinct du connecteur de charge — c'est sur la carte mère", "Réparation micro-soudure nécessaire"] }
+      }
+    ]
+  },
+
+  general_approfondi: {
+    id: "general_approfondi",
+    q: "La piste proposée n'a pas abouti — que s'est-il passé ?",
+    hint: "Sélectionner ce qui correspond à la situation.",
+    answers: [
+      { label: "Pièce remplacée, problème persistant", icon: "🔁", type: "no",
+        result: { title: "Carte mère à examiner", piece: "Diagnostic micro-soudure ou remplacement carte mère", urgency: "warning", icon: "⚠️", confidence: 60,
+          notes: ["Si la pièce évidente ne règle pas le problème, remonter vers la carte mère", "Vérifier tous les connecteurs internes avant de conclure", "Chercher des traces d'oxydation ou de court-circuit"] }
+      },
+      { label: "Problème intermittent, non reproductible", icon: "〰️", type: "maybe",
+        result: { title: "Connexion interne instable", piece: "Ouvrir et revérifier tous les connecteurs", urgency: "normal", icon: "🔌", confidence: 65,
+          notes: ["Un problème intermittent évoque souvent un connecteur partiellement déconnecté", "Ouvrir et appuyer sur chaque connecteur un par un", "La chaleur ou les vibrations peuvent révéler une mauvaise connexion"] }
+      },
+      { label: "Après dégât des eaux confirmé", icon: "💦", type: "maybe",
+        result: { title: "Oxydation carte mère", piece: "Nettoyage ultrason + inspection carte mère", urgency: "urgent", icon: "💦", confidence: 78,
+          notes: ["Dégât des eaux + symptômes multiples = oxydation qui progresse", "Nettoyage ultrason de la carte mère en priorité", "Inspecter visuellement chaque composant pour traces d'oxydation", "Plus on intervient tôt, meilleures sont les chances"] }
+      }
+    ]
+  }
+};
+
+// Mapping résultat → branche d'approfondissement
+const deepenMap = {
+  "Batterie défaillante": "batterie_approfondi",
+  "Batterie HS": "batterie_approfondi",
+  "Batterie trop déchargée — charger d'abord": "batterie_approfondi",
+  "Boot loop — batterie ou logiciel": "batterie_approfondi",
+  "Dalle OLED / LCD défaillante": "ecran_approfondi",
+  "Dalle OLED endommagée": "ecran_approfondi",
+  "Connecteur de charge défaillant": "charge_approfondi",
+  "Connecteur encrassé (charpie / poussière)": "charge_approfondi",
+  "Grilles encrassées": "son_approfondi",
+  "Haut-parleur défaillant": "son_approfondi",
+  "Connecteur de charge oxydé": "reboot_approfondi",
+};
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let currentNode = tree;
+let history = [];
+let stepCount = 0;
+const MAX_STEPS = 10;
+
+// ─── RENDER ──────────────────────────────────────────────────────────────────
+function render() {
+  updateProgress();
+  renderBreadcrumb();
+  const main = document.getElementById('main');
+
+  if (currentNode.result) {
+    main.innerHTML = renderResult(currentNode.result);
+  } else {
+    main.innerHTML = renderQuestion(currentNode);
+  }
+}
+
+function renderQuestion(node) {
+  const cols = node.answers.length === 2 ? 'two-col' : '';
+  const hint = node.hint ? `<div class="q-hint">💡 ${node.hint}</div>` : '';
+  
+  const btns = node.answers.map((a, i) => `
+    <button class="ans-btn ${a.type}" onclick="answer(${i})">
+      <span class="ans-icon">${a.icon}</span>
+      <span>${a.label}</span>
+    </button>
+  `).join('');
+
+  return `
+    <div class="question-card">
+      <div class="q-number">Question ${stepCount + 1} / ~${MAX_STEPS}</div>
+      <div class="q-text">${node.q}</div>
+      ${hint}
+      <div class="answers ${cols}">${btns}</div>
+    </div>
+  `;
+}
+
+// ─── CLÉ API ─────────────────────────────────────────────────────────────────
+// ✏️  COLLE TA CLÉ API ANTHROPIC ICI (platform.anthropic.com → API Keys)
+function getApiKey() { return ''; } // Clé gérée côté serveur
+
+// ─── BASE DE CONNAISSANCE PERSISTANTE ────────────────────────────────────────
+const KB_KEY = 'diagtech_knowledge_v1';
+
+function loadKnowledge() {
+  try {
+    return JSON.parse(localStorage.getItem(KB_KEY) || '{}');
+  } catch { return {}; }
+}
+
+function saveKnowledge(kb) {
+  try {
+    localStorage.setItem(KB_KEY, JSON.stringify(kb));
+  } catch {}
+}
+
+function getPathKey() {
+  // Clé unique basée sur le chemin de diagnostic (sans "Approfondissement IA")
+  return history
+    .filter(h => h.q !== "Approfondissement IA" && h.q !== "Résultat insuffisant")
+    .map(h => `${h.q.substring(0,20)}:${h.a.substring(0,15)}`)
+    .join('|');
+}
+
+function learnResult(result) {
+  const kb = loadKnowledge();
+  const key = getPathKey();
+  if (!key) return;
+
+  if (!kb[key]) kb[key] = [];
+
+  // Éviter les doublons
+  const exists = kb[key].some(r => r.title === result.title);
+  if (!exists) {
+    kb[key].push({
+      ...result,
+      learnedAt: new Date().toISOString(),
+      useCount: 0
+    });
+    saveKnowledge(kb);
+    console.log(`[DiagTech] Appris : "${result.title}" pour le chemin "${key}"`);
+  }
+}
+
+function getLearnedResults() {
+  const kb = loadKnowledge();
+  const key = getPathKey();
+  return kb[key] || [];
+}
+
+function incrementUseCount(title) {
+  const kb = loadKnowledge();
+  const key = getPathKey();
+  if (kb[key]) {
+    const r = kb[key].find(r => r.title === title);
+    if (r) { r.useCount = (r.useCount || 0) + 1; saveKnowledge(kb); }
+  }
+}
+
+let lastResult = null;
+
+function renderResult(r) {
+  lastResult = r;
+  const urgencyMap = {
+    urgent: { label: "⚡ URGENT — À traiter immédiatement", cls: "urgent" },
+    normal: { label: "🕐 Peut attendre — Réparation standard", cls: "normal" },
+    warning: { label: "⚠️ À surveiller — Diagnostic approfondi", cls: "warning" }
+  };
+  const urg = urgencyMap[r.urgency] || urgencyMap.normal;
+  const confColor = r.confidence >= 80 ? '#00ff87' : r.confidence >= 65 ? '#ffd32a' : '#ff4757';
+
+  const notes = r.notes.map(n => `
+    <div class="result-note">
+      <div class="note-dot"></div>
+      <span>${n}</span>
+    </div>
+  `).join('');
+
+  const deepenBtn = `
+    <button class="action-btn deepen" id="deepenBtn" onclick="deepen()">🔍 Cette piste ne suffit pas — approfondir avec recherche IA</button>
+    <div class="result-divider">ou</div>
+  `;
+
+  // Pistes apprises pour ce chemin
+  const learned = getLearnedResults().filter(lr => lr.title !== r.title);
+  const learnedHtml = learned.length > 0 ? `
+    <div style="margin-bottom: 16px;">
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--green); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">🧠 Pistes apprises pour ce diagnostic</div>
+      ${learned.map((lr, i) => `
+        <button onclick="showLearned(${i})" style="width:100%; text-align:left; padding: 10px 14px; margin-bottom: 6px; border-radius: 10px; border: 1px solid rgba(0,255,135,0.2); background: rgba(0,255,135,0.04); color: var(--text); font-family: 'Space Grotesk', sans-serif; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.15s;">
+          <span>${lr.icon}</span>
+          <span style="flex:1">${lr.title}</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted);">${lr.confidence}%</span>
+        </button>
+      `).join('')}
+    </div>
+  ` : '';
+
+  return `
+    <div class="result-card">
+      <div class="result-header">
+        <div class="result-icon ${urg.cls}">${r.icon}</div>
+        <div>
+          <div class="result-title">${r.title}</div>
+          <div class="result-subtitle">Diagnostic en ${stepCount} question${stepCount > 1 ? 's' : ''}</div>
+        </div>
+      </div>
+
+      <div class="confidence">
+        <span class="confidence-label">FIABILITÉ</span>
+        <div class="confidence-bar">
+          <div class="confidence-fill" style="width: ${r.confidence}%; background: ${confColor}"></div>
+        </div>
+        <span class="confidence-pct">${r.confidence}%</span>
+      </div>
+
+      <div class="result-piece">
+        <div class="result-piece-label">Intervention recommandée</div>
+        <div class="result-piece-value">→ ${r.piece}</div>
+      </div>
+
+      <div class="urgency-tag ${urg.cls}">${urg.label}</div>
+
+      <div class="result-notes">${notes}</div>
+
+      ${learnedHtml}
+      ${deepenBtn}
+      <button class="action-btn" onclick="reset()">↩ Nouveau diagnostic</button>
+    </div>
+  `;
+}
+
+function showLearned(idx) {
+  const learned = getLearnedResults();
+  const r = learned[idx];
+  if (!r) return;
+  incrementUseCount(r.title);
+  currentNode = { result: r };
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function deepen() {
+  // Build context from history + last result
+  const historyText = history.map(h => `- ${h.q} → ${h.a}`).join('\n');
+  const resultText = lastResult
+    ? `Diagnostic proposé : "${lastResult.title}" / Intervention : "${lastResult.piece}"`
+    : "Aucun diagnostic préalable";
+
+  const prompt = `Tu es un expert en réparation de smartphones. Un technicien a effectué un diagnostic avec les étapes suivantes :
+
+${historyText}
+
+${resultText}
+
+Ce diagnostic ne semble pas suffisant ou n'a pas résolu le problème. En t'appuyant sur tes connaissances et une recherche sur les pannes similaires connues, propose une piste alternative approfondie.
+
+Réponds UNIQUEMENT en JSON valide, sans texte autour, avec ce format exact :
+{
+  "title": "Titre court du diagnostic alternatif",
+  "piece": "Intervention recommandée",
+  "urgency": "normal" ou "urgent" ou "warning",
+  "icon": "un seul emoji",
+  "confidence": nombre entre 50 et 95,
+  "notes": ["note 1", "note 2", "note 3"],
+  "source": "courte mention de la source ou du raisonnement"
+}`;
+
+  // Show loading state
+  const main = document.getElementById('main');
+  main.innerHTML = `
+    <div class="question-card" style="text-align:center; padding: 48px 32px;">
+      <div style="font-size: 36px; margin-bottom: 20px;">🔍</div>
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--blue); margin-bottom: 8px;">Recherche en cours...</div>
+      <div style="font-size: 13px; color: var(--text-muted); line-height: 1.6;">
+        Analyse du contexte de diagnostic<br>
+        Recherche de pannes similaires<br>
+        Génération d'une piste alternative
+      </div>
+      <div class="typing-dots" style="justify-content:center; margin-top: 24px;">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+  `;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  try {
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(response.status === 401 ? '401 auth error' : `HTTP ${response.status}`);
+    }
+    // Extract text from response (may be after tool_use blocks)
+    const textBlock = data.content.find(b => b.type === "text");
+    if (!textBlock) throw new Error("No text block");
+
+    const clean = textBlock.text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    // Render as result
+    const aiResult = {
+      title: parsed.title || "Diagnostic approfondi",
+      piece: parsed.piece || "Voir notes",
+      urgency: parsed.urgency || "warning",
+      icon: parsed.icon || "🔬",
+      confidence: parsed.confidence || 65,
+      notes: [
+        ...(parsed.notes || []),
+        parsed.source ? `🌐 Source : ${parsed.source}` : null
+      ].filter(Boolean)
+    };
+
+    history.push({ q: "Approfondissement IA", a: aiResult.title });
+    stepCount++;
+    currentNode = { result: aiResult };
+
+    // 💾 Sauvegarder dans la base de connaissance
+    learnResult(aiResult);
+    updateKBCount();
+
+    render();
+
+  } catch (e) {
+    const isAuthError = e.message?.includes('401') || e.message?.includes('auth');
+    main.innerHTML = `
+      <div class="question-card" style="text-align:center; padding: 40px 32px;">
+        <div style="font-size: 32px; margin-bottom: 16px;">⚠️</div>
+        <div style="font-size: 14px; color: var(--red); margin-bottom: 8px; font-weight: 600;">
+          ${isAuthError ? 'Clé API invalide ou expirée' : 'Erreur de connexion'}
+        </div>
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 24px; line-height:1.6;">
+          ${isAuthError
+            ? 'Vérifiez votre clé sur platform.anthropic.com'
+            : 'Vérifiez votre connexion internet et réessayez.'
+          }
+        </div>
+        <button class="action-btn deepen" onclick="forgetApiKey(); showApiKeyScreen()" style="margin-bottom:8px;">🔑 Changer la clé API</button>
+        <button class="action-btn" onclick="reset()">↩ Nouveau diagnostic</button>
+      </div>
+    `;
+  }
+}
+
+function renderBreadcrumb() {
+  const bc = document.getElementById('breadcrumb');
+  bc.innerHTML = history.map(h => `
+    <div class="crumb">${h.q.substring(0, 28)}... <span class="answer">→ ${h.a}</span></div>
+  `).join('');
+}
+
+function updateProgress() {
+  const pct = Math.min((stepCount / MAX_STEPS) * 100, 95);
+  document.getElementById('progress').style.width = pct + '%';
+}
+
+// ─── ACTIONS ─────────────────────────────────────────────────────────────────
+function answer(idx) {
+  const a = currentNode.answers[idx];
+  history.push({ q: currentNode.q.substring(0, 30), a: a.label.replace(/[^\w\s]/gi, '').trim() });
+  stepCount++;
+
+  if (a.result) {
+    currentNode = { result: a.result };
+  } else if (typeof a.next === 'string') {
+    currentNode = branches[a.next];
+  } else {
+    currentNode = a.next;
+  }
+
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function reset() {
+  currentNode = tree;
+  history = [];
+  stepCount = 0;
+  render();
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+function updateKBCount() {
+  const kb = loadKnowledge();
+  const total = Object.values(kb).reduce((acc, arr) => acc + arr.length, 0);
+  const el = document.getElementById('kb-count');
+  if (el) el.textContent = total > 0
+    ? `v1.0 · 🧠 ${total} piste${total > 1 ? 's' : ''} apprise${total > 1 ? 's' : ''}`
+    : 'Akinator Réparateur v1.0';
+}
+
+if (!getApiKey() || getApiKey() === 'COLLE_TA_CLE_ICI') {
+  render();
+  document.getElementById('main').innerHTML = `
+    <div class="question-card" style="padding: 36px 32px; text-align:center;">
+      <div style="font-size: 36px; margin-bottom: 16px;">🔑</div>
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--blue); margin-bottom: 10px; letter-spacing:0.08em;">CONFIGURATION REQUISE</div>
+      <div style="font-size: 17px; font-weight: 700; margin-bottom: 12px; letter-spacing:-0.02em;">Colle ta clé API dans le fichier</div>
+      <div style="font-size: 13px; color: var(--text-muted); line-height: 1.7; text-align:left; background: var(--surface2); border-radius: 12px; padding: 16px 20px;">
+        1. Ouvre <strong style="color:var(--text)">akinator-reparateur.html</strong> dans VS Code<br>
+        2. Trouve la ligne : <code style="color:var(--blue); font-size:11px;">const ANTHROPIC_API_KEY = "COLLE_TA_CLE_ICI"</code><br>
+        3. Remplace <code style="color:var(--red); font-size:11px;">COLLE_TA_CLE_ICI</code> par ta clé<br>
+        4. Sauvegarde (<strong style="color:var(--text)">Cmd+S</strong>) et recharge la page
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted); margin-top: 14px;">
+        Clé disponible sur <span style="color:var(--blue);">platform.anthropic.com</span> → API Keys
+      </div>
+    </div>
+  `;
+} else {
+  render();
+  updateKBCount();
+}
+</script>
+</body>
+</html>
