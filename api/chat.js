@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   if (!apiKey) return res.status(500).json({ error: 'Missing API key' });
 
   const payload = {
-    model: "claude-sonnet-4-20250514",
+    model: "claude-haiku-4-5-20251001",
     max_tokens: 1000,
     messages: [{ role: "user", content: "Test. Réponds juste OK." }]
   };
