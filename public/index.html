@@ -1652,7 +1652,7 @@ Réponds UNIQUEMENT en JSON valide, sans texte autour, avec ce format exact :
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
+        model: "claude-sonnet-4-20250514",
         max_tokens: 1000,
         messages: [{ role: "user", content: prompt }]
       })
@@ -1761,7 +1761,7 @@ function updateKBCount() {
     : 'Akinator Réparateur v1.0';
 }
 
-if (false) {
+if (!getApiKey() || getApiKey() === 'COLLE_TA_CLE_ICI') {
   render();
   document.getElementById('main').innerHTML = `
     <div class="question-card" style="padding: 36px 32px; text-align:center;">
@@ -1780,9 +1780,85 @@ if (false) {
     </div>
   `;
 } else {
-  render();
+  showWelcome();
   updateKBCount();
 }
+
+function showWelcome() {
+  updateProgress();
+  renderBreadcrumb();
+  document.getElementById('main').innerHTML = `
+    <div class="question-card" style="padding: 32px;">
+      <div class="q-number">Accueil</div>
+      <div class="q-text">Quel est le problème ?</div>
+      <div class="q-hint">💡 Décris le symptôme en quelques mots — ex: "écran noir", "ne charge plus", "redémarre tout seul"</div>
+      <div style="display:flex; gap:10px; margin-top: 8px;">
+        <input
+          id="problemInput"
+          type="text"
+          placeholder="Décris le problème..."
+          style="flex:1; background: var(--surface2); border: 1px solid var(--border2); border-radius: 12px; padding: 13px 16px; color: var(--text); font-family: 'Space Grotesk', sans-serif; font-size: 14px; outline: none; transition: border-color 0.2s;"
+          onkeydown="if(event.key==='Enter') routeProblem()"
+          onfocus="this.style.borderColor='rgba(0,180,216,0.4)'"
+          onblur="this.style.borderColor=''"
+        />
+        <button onclick="routeProblem()" style="width:46px; height:46px; border-radius:12px; background: linear-gradient(135deg, var(--green), var(--blue)); border:none; cursor:pointer; font-size:18px; flex-shrink:0; transition: transform 0.15s;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform=''">➤</button>
+      </div>
+    </div>
+  `;
+  setTimeout(() => document.getElementById('problemInput')?.focus(), 100);
+}
+
+async function routeProblem() {
+  const input = document.getElementById('problemInput');
+  const text = input?.value?.trim();
+  if (!text) return;
+
+  // Routing local rapide selon mots-clés
+  const t = text.toLowerCase();
+  let target = null;
+
+  if (t.match(/écran|screen|noir|affich|cassé|fissur|vitre|dalle|pixel|ligne/)) target = 'screen';
+  else if (t.match(/charg|batterie|autonomie|s'étein|éteint|gonfle|recharge/)) target = 'charge_bat';
+  else if (t.match(/son|speaker|haut.parleur|grésil|muet|écoute|micro|echo|écho/)) target = 'sound';
+  else if (t.match(/caméra|photo|flou|objectif/)) target = 'cam';
+  else if (t.match(/face.?id|faceid|reconnaissance|déverrouil/)) target = 'fid';
+  else if (t.match(/bouton|power|allume|volume|nappe/)) target = 'btn';
+  else if (t.match(/redémarre|reboot|redémarr|restart|plante/)) target = 'reboot';
+  else if (t.match(/eau|humide|tomber|mouillé|pluie|noyé/)) target = 'water';
+  else if (t.match(/allume.?pas|ne s'allume|mort|bloqué|freeze|gelé/)) target = 'dead';
+
+  history.push({ q: "Problème décrit", a: text });
+  stepCount++;
+
+  if (target === 'screen') {
+    currentNode = tree.answers[0].next.answers[0].next; // écran s'affiche ?
+  } else if (target === 'charge_bat') {
+    currentNode = branches.charge;
+  } else if (target === 'sound') {
+    currentNode = branches.son;
+  } else if (target === 'cam') {
+    currentNode = branches.camera;
+  } else if (target === 'fid') {
+    currentNode = branches.faceid;
+  } else if (target === 'btn') {
+    currentNode = branches.bouton;
+  } else if (target === 'reboot') {
+    currentNode = branches.reboot;
+  } else if (target === 'water') {
+    // Dégât des eaux → partir sur reboot avec contexte eau
+    currentNode = branches.reboot;
+  } else if (target === 'dead') {
+    currentNode = tree.answers[1].next; // ne s'allume pas
+  } else {
+    // Pas reconnu → arbre normal
+    currentNode = tree;
+  }
+
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 </script>
 </body>
 </html>
