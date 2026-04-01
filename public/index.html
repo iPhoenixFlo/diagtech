@@ -285,19 +285,56 @@ async function loadEntries(categoryId) {
   return sbFetch(`diagnostic_entries?select=*&category_id=eq.${categoryId}&validated=eq.true`);
 }
 
+async function loadFeedbackStats(diagnosisTitle) {
+  try {
+    const rows = await sbFetch(`diagnostic_feedback?select=confirmed&diagnosis_title=eq.${encodeURIComponent(diagnosisTitle)}`);
+    const confirmed = rows.filter(r => r.confirmed).length;
+    const total = rows.length;
+    return { confirmed, total };
+  } catch { return { confirmed: 0, total: 0 }; }
+}
+
+async function saveFeedback(confirmed) {
+  const r = state.currentResult;
+  if (!r) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/diagnostic_feedback`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON,
+        'Authorization': `Bearer ${SUPABASE_ANON}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        category_name: state.selectedCategory?.name || '',
+        symptom_matched: r.symptom_match || '',
+        diagnosis_title: r.title,
+        question_path: state.questionHistory,
+        confirmed: confirmed,
+        confidence_at_time: r.confidence || 0
+      })
+    });
+  } catch (e) { console.error('[DiagTech] Feedback error:', e); }
+}
+
 // ─── CLAUDE AKINATOR ──────────────────────────────────────────────────────────
-function buildSystemPrompt(category, entries) {
+function buildSystemPrompt(category, entries, feedbackStats) {
   const entriesText = entries.map(e => {
     const causes = (e.causes || []).map(c => `  - [${c.rank}] ${c.cause} → ${c.solution}`).join('\n');
     const questions = (e.questions_to_ask || []).join(', ');
-    return `SYMPTÔME: "${e.symptom}"\nQuestions suggérées: ${questions}\nCauses probables:\n${causes}`;
+    const stats = feedbackStats[e.symptom];
+    const statsNote = stats && stats.total > 0
+      ? `\nSTATS TERRAIN: ${stats.confirmed}/${stats.total} confirmations techniciens`
+      : '';
+    return `SYMPTÔME: "${e.symptom}"\nQuestions suggérées: ${questions}\nCauses probables:\n${causes}${statsNote}`;
   }).join('\n\n---\n\n');
 
   return `Tu es un expert en diagnostic de réparation de smartphones. Tu travailles comme Akinator : tu poses des questions très ciblées pour identifier la panne avec précision.
 
 CATÉGORIE : ${category.name}
 
-BASE DE CONNAISSANCE DISPONIBLE :
+BASE DE CONNAISSANCE DISPONIBLE (enrichie par les retours terrain) :
 ${entriesText}
 
 RÈGLES :
@@ -306,6 +343,7 @@ RÈGLES :
 3. Dès que tu as une confiance ≥ 75%, donne le résultat final (max 7 questions)
 4. Commence toujours par les questions les plus simples (eau, choc, reconditionné)
 5. Adapte tes questions à l'historique — ne répète jamais une question posée
+6. Tiens compte des STATS TERRAIN pour ajuster la confiance — plus un diagnostic a de confirmations, plus ta confiance peut être élevée
 
 Réponds UNIQUEMENT en JSON valide, sans texte avant ou après.
 
@@ -342,7 +380,7 @@ async function askClaude() {
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 800,
-        system: buildSystemPrompt(state.selectedCategory, state.entries),
+        system: buildSystemPrompt(state.selectedCategory, state.entries, state.feedbackStats || {}),
         messages: state.messages
       })
     });
@@ -356,7 +394,6 @@ async function askClaude() {
     const clean = textBlock.text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
 
-    // Ajouter la réponse Claude à l'historique de messages
     state.messages.push({ role: 'assistant', content: textBlock.text });
 
     if (parsed.type === 'question') {
@@ -391,6 +428,20 @@ function answerQuestion(idx) {
   });
 
   askClaude();
+}
+
+async function submitFeedback(confirmed) {
+  // Masquer les boutons, afficher le message
+  const btns = document.getElementById('feedback-btns');
+  const thanks = document.getElementById('feedback-thanks');
+  if (btns) btns.style.display = 'none';
+  if (thanks) {
+    thanks.style.display = 'block';
+    thanks.textContent = confirmed
+      ? '✅ Merci — ce retour améliore la fiabilité du diagnostic.'
+      : '❌ Noté — ce retour aidera à corriger le diagnostic.';
+  }
+  await saveFeedback(confirmed);
 }
 
 async function deepen() {
@@ -525,6 +576,17 @@ function renderResult() {
 
       <button class="action-btn deepen" onclick="deepen()">🔍 Piste insuffisante — approfondir</button>
       <div class="result-divider">ou</div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;" id="feedback-btns">
+        <button class="action-btn" id="btn-correct"
+          style="border-color:rgba(0,255,135,0.3); color:var(--green);"
+          onclick="submitFeedback(true)">✅ Diagnostic correct</button>
+        <button class="action-btn" id="btn-wrong"
+          style="border-color:rgba(255,71,87,0.3); color:var(--red);"
+          onclick="submitFeedback(false)">❌ Diagnostic incorrect</button>
+      </div>
+      <div id="feedback-thanks" style="display:none; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-muted); text-align:center; margin-bottom:8px;"></div>
+
       <button class="action-btn" onclick="backToCategories()">← Changer de catégorie</button>
       <button class="action-btn" onclick="reset()">↩ Nouveau diagnostic</button>
     </div>`;
@@ -581,12 +643,18 @@ async function selectCategory(categoryId) {
   state.messages = [];
   state.questionHistory = [];
   state.stepCount = 0;
+  state.feedbackStats = {};
 
-  renderLoading('Chargement des entrées...', `Catégorie : ${cat.name}`, 'Préparation du diagnostic IA...');
+  renderLoading('Chargement des entrées...', `Catégorie : ${cat.name}`, 'Chargement des stats terrain...');
 
   try {
     state.entries = await loadEntries(categoryId);
-    // Démarrer la conversation Claude
+
+    // Charger les stats de feedback pour chaque entrée
+    await Promise.all(state.entries.map(async e => {
+      state.feedbackStats[e.symptom] = await loadFeedbackStats(e.symptom);
+    }));
+
     state.messages.push({
       role: 'user',
       content: `Démarre le diagnostic pour la catégorie "${cat.name}". Pose la première question la plus discriminante.`
