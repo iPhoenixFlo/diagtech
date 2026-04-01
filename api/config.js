@@ -8,6 +8,6 @@ export default function handler(req, res) {
   res.status(200).json({
     supabaseUrl:  process.env.SUPABASE_DIAGTECH_URL  || '',
     supabaseAnon: process.env.SUPABASE_DIAGTECH_ANON || '',
-    contribPin:   process.env.CONTRIB_PIN            || '1234'
+    contribPin:   process.env.CONTRIB_PIN            || '11223344'
   });
 }
