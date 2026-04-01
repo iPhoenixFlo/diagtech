@@ -223,6 +223,83 @@
   .send-btn:hover { transform: scale(1.08); }
 
   .result-divider { text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); margin: 4px 0 12px; letter-spacing: 0.08em; }
+
+  /* CONTRIBUTION MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(8,10,15,0.92);
+    display: flex; align-items: flex-start; justify-content: center;
+    z-index: 100; padding: 20px; backdrop-filter: blur(6px);
+    overflow-y: auto;
+  }
+  .modal {
+    width: 100%; max-width: 560px; background: var(--surface);
+    border: 1px solid var(--border2); border-radius: 20px;
+    padding: 32px; margin: auto; animation: slideIn 0.3s ease;
+  }
+  .modal h2 { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+  .modal-sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); margin-bottom: 24px; }
+  .field-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+  .field-input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 10px; padding: 11px 14px; color: var(--text);
+    font-family: 'Space Grotesk', sans-serif; font-size: 14px;
+    outline: none; transition: border-color 0.2s; margin-bottom: 16px;
+  }
+  .field-input:focus { border-color: rgba(0,180,216,0.4); }
+  .field-input::placeholder { color: var(--text-muted); }
+  select.field-input { cursor: pointer; }
+  .dynamic-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+  .dynamic-item {
+    display: flex; gap: 8px; align-items: flex-start;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 12px;
+  }
+  .dynamic-item input, .dynamic-item textarea {
+    flex: 1; background: transparent; border: none;
+    color: var(--text); font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px; outline: none; resize: none;
+    min-height: 20px;
+  }
+  .dynamic-item textarea { min-height: 36px; }
+  .remove-btn {
+    background: none; border: none; color: var(--text-muted);
+    cursor: pointer; font-size: 14px; padding: 2px 4px;
+    transition: color 0.15s; flex-shrink: 0;
+  }
+  .remove-btn:hover { color: var(--red); }
+  .add-btn {
+    background: none; border: 1px dashed var(--border2);
+    border-radius: 8px; padding: 8px 14px; color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    cursor: pointer; width: 100%; transition: all 0.15s; margin-bottom: 16px;
+  }
+  .add-btn:hover { border-color: var(--green); color: var(--green); }
+  .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+  .submit-btn {
+    padding: 13px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--green), var(--blue));
+    border: none; color: #080a0f; font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700; font-size: 14px; cursor: pointer; transition: opacity 0.2s;
+  }
+  .submit-btn:hover { opacity: 0.85; }
+  .cancel-btn {
+    padding: 13px; border-radius: 12px; background: var(--surface2);
+    border: 1px solid var(--border2); color: var(--text-muted);
+    font-family: 'Space Grotesk', sans-serif; font-size: 14px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .cancel-btn:hover { color: var(--text); background: var(--surface3); }
+  .pin-row { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 16px; }
+  .pin-row .field-input { margin-bottom: 0; width: 140px; letter-spacing: 0.2em; font-family: 'JetBrains Mono', monospace; }
+  .contrib-btn {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 16px; padding: 11px 16px; border-radius: 10px;
+    border: 1px dashed rgba(0,180,216,0.3); background: transparent;
+    color: var(--blue); font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: all 0.15s; width: 100%;
+  }
+  .contrib-btn:hover { background: rgba(0,180,216,0.06); border-color: rgba(0,180,216,0.5); }
 </style>
 </head>
 <body>
@@ -497,6 +574,9 @@ function renderCategories() {
       <div class="q-text">Quelle catégorie de panne ?</div>
       <div class="q-hint">💡 Sélectionne la catégorie qui correspond au symptôme signalé par le client.</div>
       <div class="categories-grid">${grid}</div>
+      <button class="contrib-btn" onclick="openContribModal()">
+        ➕ Contribuer — Ajouter une panne connue
+      </button>
     </div>`;
 }
 
@@ -701,6 +781,7 @@ async function init() {
     const cfg = await fetch('/api/config').then(r => r.json());
     SUPABASE_URL  = cfg.supabaseUrl  || '';
     SUPABASE_ANON = cfg.supabaseAnon || '';
+    contribPin    = cfg.contribPin   || '1234';
 
     if (!SUPABASE_URL || !SUPABASE_ANON) {
       renderError(
@@ -718,6 +799,165 @@ async function init() {
 
   } catch (e) {
     renderError('Erreur de chargement', e.message || 'Vérifiez la connexion et les variables d\'environnement Vercel.');
+  }
+}
+
+// ─── CONTRIBUTION ─────────────────────────────────────────────────────────────
+let contribPin = '';
+
+function openContribModal() {
+  const catOptions = state.categories.map(c =>
+    `<option value="${c.id}">${c.name}</option>`
+  ).join('');
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'contrib-modal';
+  modal.innerHTML = `
+    <div class="modal">
+      <h2>➕ Contribuer à la base</h2>
+      <div class="modal-sub">⚠️ Entrée soumise pour validation — elle n'apparaîtra pas immédiatement</div>
+
+      <div class="field-label">Catégorie</div>
+      <select class="field-input" id="c-category">${catOptions}</select>
+
+      <div class="field-label">Symptôme décrit par le client</div>
+      <input class="field-input" id="c-symptom" placeholder="Ex: Le haut-parleur grésille uniquement en appel" />
+
+      <div class="field-label">Questions à poser au client</div>
+      <div class="dynamic-list" id="c-questions">
+        <div class="dynamic-item">
+          <input placeholder="Ex: Ça a commencé après une chute ?" />
+          <button class="remove-btn" onclick="removeItem(this)">✕</button>
+        </div>
+      </div>
+      <button class="add-btn" onclick="addQuestion()">+ Ajouter une question</button>
+
+      <div class="field-label">Causes probables (par ordre de probabilité)</div>
+      <div class="dynamic-list" id="c-causes">
+        <div class="dynamic-item" style="flex-direction:column; gap:6px;">
+          <input placeholder="Cause — Ex: Grille oreillette encrassée" style="width:100%" />
+          <input placeholder="Solution — Ex: Nettoyage professionnel" style="width:100%" />
+          <button class="remove-btn" style="align-self:flex-end" onclick="removeItem(this.parentElement)">✕ Supprimer</button>
+        </div>
+      </div>
+      <button class="add-btn" onclick="addCause()">+ Ajouter une cause</button>
+
+      <div class="field-label">Code PIN</div>
+      <div class="pin-row">
+        <input class="field-input" id="c-pin" type="password" placeholder="••••" maxlength="8" />
+        <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-muted); padding-bottom:18px;">Demande le PIN à iPhoenix</span>
+      </div>
+
+      <div id="c-error" style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--red); margin-bottom:12px; min-height:16px;"></div>
+
+      <div class="modal-actions">
+        <button class="cancel-btn" onclick="closeContribModal()">Annuler</button>
+        <button class="submit-btn" onclick="submitContrib()">Soumettre →</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+  document.getElementById('c-symptom').focus();
+}
+
+function closeContribModal() {
+  document.getElementById('contrib-modal')?.remove();
+}
+
+function addQuestion() {
+  const list = document.getElementById('c-questions');
+  const div = document.createElement('div');
+  div.className = 'dynamic-item';
+  div.innerHTML = `
+    <input placeholder="Ex: Contact avec eau récemment ?" />
+    <button class="remove-btn" onclick="removeItem(this)">✕</button>`;
+  list.appendChild(div);
+}
+
+function addCause() {
+  const list = document.getElementById('c-causes');
+  const div = document.createElement('div');
+  div.className = 'dynamic-item';
+  div.style.cssText = 'flex-direction:column; gap:6px;';
+  div.innerHTML = `
+    <input placeholder="Cause — Ex: Batterie dégradée" style="width:100%" />
+    <input placeholder="Solution — Ex: Remplacement batterie" style="width:100%" />
+    <button class="remove-btn" style="align-self:flex-end" onclick="removeItem(this.parentElement)">✕ Supprimer</button>`;
+  list.appendChild(div);
+}
+
+function removeItem(el) {
+  el.closest('.dynamic-item')?.remove();
+}
+
+async function submitContrib() {
+  const errEl = document.getElementById('c-error');
+  errEl.textContent = '';
+
+  const categoryId = document.getElementById('c-category').value;
+  const symptom    = document.getElementById('c-symptom').value.trim();
+  const pin        = document.getElementById('c-pin').value.trim();
+
+  // Validation
+  if (!symptom) { errEl.textContent = '→ Le symptôme est obligatoire.'; return; }
+  if (!pin)     { errEl.textContent = '→ Le code PIN est obligatoire.'; return; }
+  if (pin !== contribPin) { errEl.textContent = '→ Code PIN incorrect.'; return; }
+
+  // Collecter les questions
+  const questions = [...document.querySelectorAll('#c-questions .dynamic-item input')]
+    .map(i => i.value.trim()).filter(Boolean);
+
+  // Collecter les causes
+  const causeItems = document.querySelectorAll('#c-causes .dynamic-item');
+  const causes = [...causeItems].map((item, idx) => {
+    const inputs = item.querySelectorAll('input');
+    return {
+      rank: idx + 1,
+      cause: inputs[0]?.value.trim() || '',
+      solution: inputs[1]?.value.trim() || ''
+    };
+  }).filter(c => c.cause);
+
+  if (causes.length === 0) { errEl.textContent = '→ Au moins une cause est obligatoire.'; return; }
+
+  // Keywords auto générés depuis le symptôme
+  const keywords = symptom.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/diagnostic_entries`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON,
+        'Authorization': `Bearer ${SUPABASE_ANON}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        category_id: categoryId,
+        symptom,
+        questions_to_ask: questions,
+        causes,
+        keywords,
+        source: 'contributor',
+        validated: false,
+        validated_by: null
+      })
+    });
+
+    if (!res.ok) throw new Error(`Erreur ${res.status}`);
+
+    closeContribModal();
+
+    // Confirmation visuelle
+    const thanks = document.createElement('div');
+    thanks.style.cssText = 'position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--surface); border:1px solid rgba(0,255,135,0.3); border-radius:12px; padding:14px 24px; font-family:"JetBrains Mono",monospace; font-size:12px; color:var(--green); z-index:200; animation:slideIn 0.3s ease;';
+    thanks.textContent = '✅ Contribution soumise — merci ! Elle sera validée avant apparition.';
+    document.body.appendChild(thanks);
+    setTimeout(() => thanks.remove(), 4000);
+
+  } catch (e) {
+    errEl.textContent = `→ Erreur : ${e.message}`;
   }
 }
 
