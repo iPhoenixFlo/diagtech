@@ -377,17 +377,17 @@ async function askClaude() {
   }
 }
 
-function answerQuestion(optionLabel) {
+function answerQuestion(idx) {
+  const o = window._currentOptions[idx];
+  if (!o) return;
   const q = state.currentQuestion;
 
-  // Ajouter à l'historique breadcrumb
-  state.questionHistory.push({ q: q.text, a: optionLabel });
+  state.questionHistory.push({ q: q.text, a: o.label });
   state.stepCount++;
 
-  // Ajouter au contexte Claude
   state.messages.push({
     role: 'user',
-    content: `Question posée au technicien : "${q.text}"\nRéponse : "${optionLabel}"`
+    content: `Question posée au technicien : "${q.text}"\nRéponse : "${o.label}"`
   });
 
   askClaude();
@@ -455,8 +455,10 @@ function renderQuestion() {
 
   const cols = q.options?.length === 2 ? 'two-col' : '';
   const hint = q.hint ? `<div class="q-hint">💡 ${q.hint}</div>` : '';
-  const btns = (q.options || []).map((o, i) => `
-    <button class="ans-btn ${o.style || 'maybe'}" onclick="answerQuestion(${JSON.stringify(o.label)})">
+  // Stocker les options globalement pour éviter les problèmes de guillemets dans onclick
+  window._currentOptions = q.options || [];
+  const btns = window._currentOptions.map((o, i) => `
+    <button class="ans-btn ${o.style || 'maybe'}" onclick="answerQuestion(${i})">
       <span class="ans-icon">${o.icon || '→'}</span>
       <span>${o.label}</span>
     </button>
