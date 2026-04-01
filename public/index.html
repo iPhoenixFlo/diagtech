@@ -524,11 +524,41 @@ async function submitFeedback(confirmed) {
 async function deepen() {
   state.messages.push({
     role: 'user',
-    content: `Le diagnostic proposé "${state.currentResult?.title}" n'a pas résolu le problème. Propose une piste alternative en explorant d'autres causes possibles dans la base de connaissance, ou des causes liées à la carte mère / microsoudure.`
+    content: `Le diagnostic proposé "${state.currentResult?.title}" n'a pas résolu le problème ou semble insuffisant. Utilise ta capacité de recherche web pour trouver des pannes similaires documentées sur des forums de réparation, iFixit, ou d'autres sources techniques. Propose une piste alternative approfondie basée sur ta recherche ET sur la base de connaissance disponible. Réponds en JSON avec le format résultat habituel.`
   });
   state.stepCount++;
-  state.questionHistory.push({ q: 'Piste insuffisante', a: 'Approfondir' });
-  await askClaude();
+  state.questionHistory.push({ q: 'Piste insuffisante', a: 'Recherche web' });
+
+  renderLoading('Recherche web en cours...', 'Consultation de sources techniques', 'Analyse des cas similaires...');
+
+  try {
+    const res = await fetch('/api/deepen', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system: buildSystemPrompt(state.selectedCategory, state.entries, state.feedbackStats || {}),
+        messages: state.messages
+      })
+    });
+
+    if (!res.ok) throw new Error(`API error ${res.status}`);
+    const data = await res.json();
+
+    const textBlock = data.content?.find(b => b.type === 'text');
+    if (!textBlock) throw new Error('Pas de réponse texte');
+
+    const clean = textBlock.text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    state.messages.push({ role: 'assistant', content: textBlock.text });
+    state.currentResult = { ...parsed, webSearched: true };
+    state.screen = 'result';
+    render();
+
+  } catch (e) {
+    console.error('[DiagTech] Deepen error:', e);
+    renderError('Erreur recherche', 'La recherche web a échoué. Vérifiez votre connexion.');
+  }
 }
 
 // ─── RENDER ───────────────────────────────────────────────────────────────────
@@ -633,7 +663,7 @@ function renderResult() {
         <div class="result-icon ${urg.cls}">${r.icon || '🔧'}</div>
         <div>
           <div class="result-title">${r.title}</div>
-          <div class="result-subtitle">Diagnostic en ${state.stepCount} question${state.stepCount > 1 ? 's' : ''} · ${state.selectedCategory?.name}</div>
+          <div class="result-subtitle">Diagnostic en ${state.stepCount} question${state.stepCount > 1 ? 's' : ''} · ${state.selectedCategory?.name}${r.webSearched ? ' · 🌐 Recherche web' : ''}</div>
         </div>
       </div>
 
