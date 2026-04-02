@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iPhoenix — Diagnostic Express</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f1117;
+  --surface: #161a24;
+  --surface2: #1c2130;
+  --surface3: #222840;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --orange: #f97316;
+  --orange-light: #fb923c;
+  --orange-dim: rgba(249,115,22,0.3);
+  --orange-glow: rgba(249,115,22,0.08);
+  --text: #f1f5f9;
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
+  --bot-bg: #1c2130;
+  --user-bg: rgba(249,115,22,0.07);
+  --green: #22c55e;
+  --red: #ef4444;
+  --radius: 20px;
+}
+
+body {
+  background: var(--bg);
+  font-family: 'Barlow', sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ambiance */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 100% 100%, rgba(249,115,22,0.06) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 0% 0%, rgba(249,115,22,0.03) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* Grain texture */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.shell {
+  width: 100%;
+  max-width: 480px;
+  height: min(700px, 96vh);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── HEADER ── */
+.header {
+  padding: 20px 24px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+}
+
+.header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--orange), transparent);
+}
+
+.brand-mark {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1e2433, #161a24);
+  border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.brand-mark::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(249,115,22,0.2);
+}
+
+.brand-info { flex: 1; }
+
+.brand-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+
+.brand-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  background: rgba(34,197,94,0.08);
+  border: 1px solid rgba(34,197,94,0.2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--green);
+}
+
+.pulse {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse 2.5s infinite;
+}
+
+@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.8); } }
+
+/* ── MESSAGES ── */
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 20px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--surface);
+  border-left: 1px solid var(--border2);
+  border-right: 1px solid var(--border2);
+  border-bottom: 1px solid var(--border2);
+  border-radius: 0 0 var(--radius) var(--radius);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+
+.messages::-webkit-scrollbar { width: 4px; }
+.messages::-webkit-scrollbar-track { background: transparent; }
+.messages::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* Bot message */
+.msg-bot {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  animation: msgIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.bot-avatar {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--orange-dim), rgba(249,115,22,0.08));
+  border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.bubble-bot {
+  background: var(--bot-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px 16px 16px 4px;
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  max-width: calc(100% - 42px);
+  position: relative;
+}
+
+.bubble-bot::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--orange-dim), transparent);
+  border-radius: 16px 16px 0 0;
+  opacity: 0.5;
+}
+
+/* User message */
+.msg-user {
+  display: flex;
+  justify-content: flex-end;
+  animation: msgIn 0.3s ease;
+}
+
+.bubble-user {
+  background: var(--user-bg);
+  border: 1px solid var(--border2);
+  border-radius: 16px 16px 4px 16px;
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--orange);
+  max-width: 80%;
+}
+
+/* Options */
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  animation: msgIn 0.4s ease 0.1s both;
+}
+
+.opt-btn {
+  padding: 11px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  color: var(--text);
+  font-family: 'Barlow', sans-serif;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.opt-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(249,115,22,0.06), transparent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.opt-btn:hover {
+  border-color: var(--orange-dim);
+  color: var(--orange);
+  transform: translateX(3px);
+}
+
+.opt-btn:hover::before { opacity: 1; }
+
+.opt-icon { font-size: 16px; flex-shrink: 0; }
+
+.opt-btn.two-cols { display: inline-flex; }
+.opts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; animation: msgIn 0.4s ease 0.1s both; }
+
+/* Typing indicator */
+.typing {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.typing-dots {
+  background: var(--bot-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px 16px 16px 4px;
+  padding: 14px 18px;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.typing-dots span {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--orange-dim);
+  animation: dot 1.4s infinite;
+}
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dot { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; } 40% { transform: scale(1.1); opacity: 1; } }
+
+/* ── RESULT CARD ── */
+.result-card {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  padding: 16px;
+  margin-top: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.result-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--orange), var(--orange));
+}
+
+.result-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 8px;
+}
+
+.result-diag {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+
+.result-action {
+  font-size: 13px;
+  color: var(--orange);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.result-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.meta-tag {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  border: 1px solid;
+}
+
+.meta-tag.urgency-normal { color: var(--green); border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.06); }
+.meta-tag.urgency-urgent { color: var(--orange); border-color: rgba(249,115,22,0.3); background: rgba(249,115,22,0.06); }
+.meta-tag.urgency-warning { color: var(--orange); border-color: rgba(249,115,22,0.3); background: rgba(249,115,22,0.06); }
+
+.confidence-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.conf-bar {
+  flex: 1;
+  height: 2px;
+  background: var(--surface3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.conf-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--orange), var(--orange-light));
+  border-radius: 2px;
+  transition: width 0.8s ease;
+}
+
+.conf-pct {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* CTA */
+.cta-card {
+  background: linear-gradient(135deg, rgba(249,115,22,0.06), rgba(249,115,22,0.04));
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  padding: 16px;
+  margin-top: 8px;
+}
+
+.cta-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+
+.cta-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.cta-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, var(--orange), #b8942e);
+  color: #0e0c0a;
+  font-family: 'Barlow', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 8px;
+  text-decoration: none;
+}
+
+.cta-btn:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(249,115,22,0.2); }
+
+.cta-btn-sec {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: 'Barlow', sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+.cta-btn-sec:hover { border-color: var(--orange-dim); color: var(--text); }
+
+/* ── INPUT ── */
+.composer {
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  position: relative;
+  display: none;
+}
+
+.composer::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 24px; right: 24px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border2), transparent);
+}
+
+.composer input {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 11px 16px;
+  color: var(--text);
+  font-family: 'Barlow', sans-serif;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.composer input:focus { border-color: var(--orange-dim); }
+.composer input::placeholder { color: var(--text-muted); }
+
+.send-btn {
+  width: 42px; height: 42px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, var(--orange), #a87820);
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.send-btn:hover { transform: scale(1.06); box-shadow: 0 4px 16px rgba(249,115,22,0.35); }
+.send-btn:disabled { opacity: 0.4; cursor: default; transform: none; }
+
+/* ── FOOTER ── */
+.footer {
+  text-align: center;
+  margin-top: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+/* Scrollbar auto-scroll helper */
+.anchor {}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="header">
+    <div class="brand-mark">🔬</div>
+    <div class="brand-info">
+      <div class="brand-name">iPhoenix</div>
+      <div class="brand-sub">Diagnostic Express · Saint-Saturnin-lès-Avignon</div>
+    </div>
+    <div class="status-pill">
+      <div class="pulse"></div>
+      En ligne
+    </div>
+  </div>
+
+  <div class="messages" id="messages">
+    <div class="anchor" id="anchor"></div>
+  </div>
+
+  <div class="composer">
+    <input
+      id="user-input"
+      type="text"
+      placeholder="Décrivez votre problème..."
+      autocomplete="off"
+      onkeydown="if(event.key==='Enter' && !event.shiftKey) send()"
+    />
+    <button class="send-btn" id="send-btn" onclick="send()">→</button>
+  </div>
+</div>
+
+<div class="footer">Alimenté par iPhoenix DiagTech · IA certifiée Qualirépar</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+const SHOP = {
+  name: 'iPhoenix',
+  address: '258 Avenue de la Rétanque, 84450 Saint-Saturnin-lès-Avignon',
+  phone: '06.87.36.22.45',
+  tel: '0687362245',
+  email: 'floarno@me.com',
+  maps: 'https://maps.google.com/?q=iPhoenix+Saint-Saturnin-les-Avignon',
+  hours: 'Lun–Ven 9h–18h',
+};
+
+let SUPABASE_URL  = '';
+let SUPABASE_ANON = '';
+let messages      = [];   // historique Claude
+let isTyping      = false;
+let diagResult    = null;
+let categories    = [];
+let entries       = [];
+
+// ─── SUPABASE ─────────────────────────────────────────────────────────────────
+async function sbFetch(path) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` }
+  });
+  if (!r.ok) throw new Error(`Supabase ${r.status}`);
+  return r.json();
+}
+
+async function loadKnowledge() {
+  categories = await sbFetch('diagnostic_categories?select=*&order=display_order');
+  // Charger toutes les entrées validées d'un coup
+  entries = await sbFetch('diagnostic_entries?select=*&validated=eq.true');
+}
+
+// ─── SYSTEM PROMPT ────────────────────────────────────────────────────────────
+function buildSystem() {
+  const kb = entries.map(e => {
+    const causes = (e.causes || []).map(c => `  - ${c.cause} → ${c.solution}`).join('\n');
+    return `• ${e.symptom}\n${causes}`;
+  }).join('\n\n');
+
+  return `Tu es l'assistant de diagnostic de la boutique de réparation ${SHOP.name}, à ${SHOP.address}.
+Tu aides les clients à identifier leur panne et les orientes vers la boutique.
+
+BASE DE CONNAISSANCE (pannes connues) :
+${kb}
+
+RÈGLES IMPÉRATIVES :
+1. Tu es chaleureux, rassurant, professionnel — comme un vrai technicien à l'accueil
+2. Pose UNE seule question à la fois, courte, claire, compréhensible par un non-technicien
+3. Quand tu poses une question, propose des options cliquables (format JSON ci-dessous)
+4. Après 3-5 échanges max, conclus avec un diagnostic ET une invitation à venir en boutique
+5. NE JAMAIS mentionner de prix précis — dire "tarif affiché en boutique"
+6. Si la panne est urgente (batterie gonflée, court-circuit), l'indiquer clairement
+7. Toujours terminer par l'action CTA boutique
+
+FORMAT DE RÉPONSE (JSON strict, AUCUN texte autour) :
+
+Si tu poses une question :
+{
+  "type": "question",
+  "text": "Message chaleureux au client",
+  "options": [{"label": "Texte option", "icon": "emoji"}, ...]
+}
+
+Si tu as le diagnostic :
+{
+  "type": "result",
+  "text": "Message de conclusion chaleureux",
+  "diagnosis": "Nom de la panne probable",
+  "action": "Ce qu'on va faire en boutique",
+  "urgency": "normal|urgent|warning",
+  "confidence": 85,
+  "cta": {
+    "title": "Titre accrocheur pour venir en boutique",
+    "subtitle": "Sous-texte rassurant"
+  }
+}
+
+Si le client dit bonjour ou une phrase générale sans panne précise :
+{
+  "type": "question",
+  "text": "Message d'accueil chaleureux + demande du problème",
+  "options": [
+    {"label": "Écran cassé ou défaillant", "icon": "📱"},
+    {"label": "Problème de batterie", "icon": "🔋"},
+    {"label": "Ne charge plus", "icon": "⚡"},
+    {"label": "Problème de son", "icon": "🔊"},
+    {"label": "Caméra défaillante", "icon": "📷"},
+    {"label": "Autre problème", "icon": "🔧"}
+  ]
+}`;
+}
+
+// ─── CLAUDE ───────────────────────────────────────────────────────────────────
+async function askClaude(userMsg) {
+  messages.push({ role: 'user', content: userMsg });
+  showTyping();
+  setInputEnabled(false);
+
+  try {
+    const r = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 600,
+        system: buildSystem(),
+        messages
+      })
+    });
+
+    const data = await r.json();
+    removeTyping();
+
+    const textBlock = data.content?.find(b => b.type === 'text');
+    if (!textBlock) throw new Error('No text');
+
+    const clean = textBlock.text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    messages.push({ role: 'assistant', content: textBlock.text });
+
+    if (parsed.type === 'question') {
+      addBotMessage(parsed.text, parsed.options);
+    } else if (parsed.type === 'result') {
+      diagResult = parsed;
+      addBotMessage(parsed.text);
+      addResultCard(parsed);
+      addCTA(parsed.cta);
+      setInputEnabled(false);
+      return;
+    }
+
+    setInputEnabled(true);
+
+  } catch (e) {
+    removeTyping();
+    addBotMessage('Je rencontre une difficulté technique. Appelez-nous directement au ' + SHOP.phone + ' 😊');
+    setInputEnabled(true);
+  }
+}
+
+// ─── UI ───────────────────────────────────────────────────────────────────────
+function addBotMessage(text, options) {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-bot';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'bot-avatar';
+  avatar.textContent = '🔬';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble-bot';
+  bubble.innerHTML = text.replace(/\n/g, '<br>');
+
+  wrap.appendChild(avatar);
+  wrap.appendChild(bubble);
+
+  appendToMessages(wrap);
+
+  if (options?.length) {
+    addOptionsBlock(options, (opt) => {
+      addUserMessage(opt.label);
+      askClaude(opt.label);
+    });
+  } else {
+    scrollToBottom();
+  }
+}
+
+function addOptionsBlock(options, onSelect) {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'margin-left: 38px; display:flex; flex-direction:column; gap:8px; animation: msgIn 0.4s ease 0.15s both;';
+
+  const useGrid = options.length >= 4 && options.every(o => o.label.length < 22);
+  if (useGrid) wrap.style.display = 'grid';
+  if (useGrid) wrap.style.gridTemplateColumns = '1fr 1fr';
+  if (useGrid) wrap.style.gap = '8px';
+
+  options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn';
+    btn.innerHTML = `<span class="opt-icon">${opt.icon || '→'}</span><span>${opt.label}</span>`;
+    btn.onclick = () => {
+      wrap.querySelectorAll('.opt-btn').forEach(b => { b.disabled = true; b.style.opacity = '0.35'; });
+      onSelect(opt);
+    };
+    wrap.appendChild(btn);
+  });
+
+  appendToMessages(wrap);
+  scrollToBottom();
+}
+
+function addUserMessage(text) {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-user';
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble-user';
+  bubble.textContent = text;
+  wrap.appendChild(bubble);
+  appendToMessages(wrap);
+  scrollToBottom();
+}
+
+function addResultCard(r) {
+  const urgencyMap = {
+    normal:  { label: 'Réparation standard',   cls: 'urgency-normal' },
+    urgent:  { label: '⚡ Urgent',              cls: 'urgency-urgent' },
+    warning: { label: '⚠️ À surveiller',        cls: 'urgency-warning' },
+  };
+  const urg = urgencyMap[r.urgency] || urgencyMap.normal;
+
+  const card = document.createElement('div');
+  card.className = 'result-card';
+  card.innerHTML = `
+    <div class="result-label">Diagnostic probable</div>
+    <div class="result-diag">${r.diagnosis}</div>
+    <div class="result-action">→ ${r.action}</div>
+    <div class="result-meta">
+      <span class="meta-tag ${urg.cls}">${urg.label}</span>
+      <span class="meta-tag" style="color:var(--text-muted); border-color:var(--border);">Fiabilité ${r.confidence}%</span>
+    </div>
+    <div class="confidence-row">
+      <div class="conf-bar"><div class="conf-fill" style="width:${r.confidence}%"></div></div>
+      <span class="conf-pct">${r.confidence}%</span>
+    </div>`;
+
+  const container = document.createElement('div');
+  container.style.cssText = 'margin-left: 38px;';
+  container.appendChild(card);
+  appendToMessages(container);
+  scrollToBottom();
+}
+
+function addCTA(cta) {
+  const card = document.createElement('div');
+  card.className = 'cta-card';
+  card.innerHTML = `
+    <div class="cta-title">${cta?.title || 'Venez nous voir en boutique'}</div>
+    <div class="cta-sub">${cta?.subtitle || 'Diagnostic gratuit sur place · Devis sans engagement · Prise en charge immédiate si pièce disponible'}</div>
+    <a href="tel:${SHOP.tel}" class="cta-btn">📞 Appeler iPhoenix — ${SHOP.phone}</a>
+    <a href="${SHOP.maps}" target="_blank" class="cta-btn-sec">📍 ${SHOP.address}</a>`;
+
+  const container = document.createElement('div');
+  container.style.cssText = 'margin-left: 38px;';
+  container.appendChild(card);
+  appendToMessages(container);
+  scrollToBottom();
+}
+
+function showTyping() {
+  const el = document.createElement('div');
+  el.className = 'typing';
+  el.id = 'typing-indicator';
+  el.innerHTML = `
+    <div class="bot-avatar">🔬</div>
+    <div class="typing-dots"><span></span><span></span><span></span></div>`;
+  appendToMessages(el);
+  scrollToBottom();
+}
+
+function removeTyping() {
+  document.getElementById('typing-indicator')?.remove();
+}
+
+function appendToMessages(el) {
+  const anchor = document.getElementById('anchor');
+  anchor.parentNode.insertBefore(el, anchor);
+}
+
+function scrollToBottom() {
+  const msgs = document.getElementById('messages');
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function setInputEnabled(enabled) {
+  const input = document.getElementById('user-input');
+  const btn   = document.getElementById('send-btn');
+  input.disabled = !enabled;
+  btn.disabled   = !enabled;
+  if (enabled) input.focus();
+}
+
+async function send() {
+  const input = document.getElementById('user-input');
+  const text = input.value.trim();
+  if (!text || isTyping) return;
+  input.value = '';
+  addUserMessage(text);
+  await askClaude(text);
+}
+
+// ─── WELCOME ──────────────────────────────────────────────────────────────────
+function showWelcome() {
+  const catIcons = {
+    'Écran': '📱', 'Batterie': '🔋', 'Charge': '⚡',
+    'Audio': '🔊', 'Caméra': '📷', 'Réseau': '📶', 'Redémarrages': '🔄'
+  };
+
+  // Message de bienvenue
+  addBotMessage(`👋 Bienvenue chez <strong>iPhoenix</strong> !
+
+Je suis votre assistant de diagnostic. En quelques questions, je vais identifier votre panne et vous orienter vers la bonne réparation.
+
+<strong>Quel est le problème avec votre téléphone ?</strong>`);
+
+  // Options de catégories depuis Supabase
+  const opts = categories.map(c => ({
+    label: c.name,
+    icon: catIcons[c.name] || '🔧',
+    value: c.id
+  }));
+
+  addOptionsBlock(opts, (opt) => {
+    addUserMessage(opt.label);
+    startDiagnostic(opt);
+  });
+
+  setInputEnabled(false);
+}
+
+async function startDiagnostic(category) {
+  // Charger les entrées de la catégorie
+  const catEntries = entries.filter(e => e.category_id === category.value);
+
+  // Premier message Claude avec contexte catégorie
+  messages = [];
+  await askClaude(`Le client a sélectionné la catégorie : ${category.label}. Pose la première question pour identifier la panne précise dans cette catégorie.`);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+async function init() {
+  setInputEnabled(false);
+
+  try {
+    const cfg = await fetch('/api/config').then(r => r.json());
+    SUPABASE_URL  = cfg.supabaseUrl;
+    SUPABASE_ANON = cfg.supabaseAnon;
+
+    await loadKnowledge();
+
+    // Message d'accueil direct sans appel Claude
+    showWelcome();
+
+  } catch (e) {
+    addBotMessage(`Bonjour ! 👋 Notre assistant de diagnostic est temporairement indisponible.\n\nContactez-nous directement au **${SHOP.phone}** ou passez en boutique.`);
+    setInputEnabled(false);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
