@@ -75,7 +75,7 @@ body::after {
 
 /* ── HEADER ── */
 .header {
-  padding: 20px 24px 16px;
+  padding: 10px 16px;
   background: var(--surface);
   border: 1px solid var(--border2);
   border-bottom: none;
@@ -96,6 +96,7 @@ body::after {
 }
 
 .brand-mark {
+  display: none;
   width: 44px; height: 44px;
   border-radius: 12px;
   background: linear-gradient(135deg, #1e2433, #161a24);
@@ -162,7 +163,7 @@ body::after {
 .messages {
   flex: 1;
   overflow-y: auto;
-  padding: 20px 20px 12px;
+  padding: 16px 16px 10px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -252,7 +253,7 @@ body::after {
 }
 
 .opt-btn {
-  padding: 11px 16px;
+  padding: 9px 14px;
   border-radius: 12px;
   border: 1px solid var(--border2);
   background: var(--surface2);
@@ -551,10 +552,9 @@ body::after {
 
 <div class="shell">
   <div class="header">
-    <div class="brand-mark">🔬</div>
-    <div class="brand-info">
-      <div class="brand-name">iPhoenix</div>
-      <div class="brand-sub">Diagnostic Express · Saint-Saturnin-lès-Avignon</div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font-size:14px;">🔬</span>
+      <span style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:15px; letter-spacing:0.04em; text-transform:uppercase;">i<span style="color:var(--orange);">Phoenix</span> · Diagnostic</span>
     </div>
     <div class="status-pill">
       <div class="pulse"></div>
@@ -823,7 +823,8 @@ function addCTA(cta) {
     <div class="cta-title">${cta?.title || 'Venez nous voir en boutique'}</div>
     <div class="cta-sub">${cta?.subtitle || 'Diagnostic gratuit sur place · Devis sans engagement · Prise en charge immédiate si pièce disponible'}</div>
     <a href="tel:${SHOP.tel}" class="cta-btn">📞 Appeler iPhoenix — ${SHOP.phone}</a>
-    <a href="${SHOP.maps}" target="_blank" class="cta-btn-sec">📍 ${SHOP.address}</a>`;
+    <a href="${SHOP.maps}" target="_blank" class="cta-btn-sec">📍 ${SHOP.address}</a>
+    <button onclick="restartDiagnostic()" class="cta-btn-sec" style="width:100%; margin-top:4px; cursor:pointer; border:none; font-family:inherit;">↩ Recommencer un diagnostic</button>`;
 
   const container = document.createElement('div');
   container.style.cssText = 'margin-left: 38px;';
@@ -872,6 +873,23 @@ async function send() {
   input.value = '';
   addUserMessage(text);
   await askClaude(text);
+}
+
+// ─── RESTART ─────────────────────────────────────────────────────────────────
+function restartDiagnostic() {
+  // Vider les messages
+  const anchor = document.getElementById('anchor');
+  const msgs = document.getElementById('messages');
+  while (msgs.firstChild && msgs.firstChild !== anchor) {
+    msgs.removeChild(msgs.firstChild);
+  }
+  // Réinitialiser l'état
+  messages = [];
+  diagResult = null;
+  setInputEnabled(false);
+  // Relancer l'accueil
+  showWelcome();
+  scrollToBottom();
 }
 
 // ─── WELCOME ──────────────────────────────────────────────────────────────────
